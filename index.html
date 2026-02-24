@@ -1,22 +1,253 @@
-{
-  "name": "Summer List",
-  "short_name": "Summer",
-  "start_url": "/summer-list/",
-  "scope": "/summer-list/",
-  "display": "standalone",
-  "background_color": "#050A1A",
-  "theme_color": "#00F5D4",
-  "orientation": "portrait",
-  "icons": [
-    {
-      "src": "/summer-list/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/summer-list/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#00F5D4" />
+  <title>Summer List</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/summer-list/manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/summer-list/styles.css" />
+</head>
+
+<body>
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <button class="iconbtn" id="btnBack" type="button" aria-label="Indietro" hidden>←</button>
+
+    <div class="topbar__title">
+      <div class="topbar__small" id="topSmall">Home</div>
+      <div class="topbar__big" id="topBig">Categorie</div>
+    </div>
+
+    <div class="topbar__actions">
+      <button class="iconbtn iconbtn--data" id="btnData" type="button" aria-label="Dati">⇅</button>
+      <button class="iconbtn iconbtn--add" id="btnAddTop" type="button" aria-label="Aggiungi">＋</button>
+      <button class="iconbtn" id="btnMenu" type="button" aria-label="Impostazioni">⋮</button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+    <!-- HOME -->
+    <section class="screen" id="screenHome">
+      <div class="dash">
+        <div class="dash__card dash__card--a">
+          <div class="dash__num" id="dashTotal">0</div>
+          <div class="dash__lbl" id="lblTotal">Tot</div>
+        </div>
+        <div class="dash__card dash__card--b">
+          <div class="dash__num" id="dashDone">0</div>
+          <div class="dash__lbl" id="lblDone">Fatte</div>
+        </div>
+        <div class="dash__card dash__card--c">
+          <div class="dash__num" id="dashOpen">0</div>
+          <div class="dash__lbl" id="lblOpen">In sospeso</div>
+        </div>
+      </div>
+
+      <div class="sectionHead">
+        <h2 class="sectionTitle" id="homeSectionTitle">Categorie</h2>
+      </div>
+
+      <ul class="list" id="categoryList"></ul>
+
+      <div class="tip" id="homeTip">
+        Tocca una categoria per aprirla. Le categorie private richiedono PIN.
+      </div>
+    </section>
+
+    <!-- CATEGORY -->
+    <section class="screen" id="screenCategory" hidden>
+      <div class="categoryHeader">
+        <div>
+          <h2 class="sectionTitle" id="categoryTitle">Categoria</h2>
+          <div class="subTitle" id="categorySub">—</div>
+        </div>
+
+        <button class="pillbtn" id="btnEditCategory" type="button">
+          ✎ <span id="lblEditCategory">Modifica</span>
+        </button>
+      </div>
+
+      <ul class="list" id="taskList"></ul>
+
+      <div class="tip" id="catTip">
+        Spunta le attività completate. Puoi modificare con ✎ o eliminare con 🗑.
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: CATEGORIA -->
+  <dialog class="modal" id="categoryModal">
+    <div class="modal__panel">
+      <div class="modal__head">
+        <div class="modal__title" id="categoryModalTitle">Nuova categoria</div>
+        <button class="iconbtn" id="closeCategoryModal" type="button" aria-label="Chiudi">✕</button>
+      </div>
+
+      <div class="modal__body">
+        <label class="label" for="categoryInput" id="lblCatName">Nome categoria</label>
+        <input class="input" id="categoryInput" type="text" maxlength="24" placeholder="Es. Attività" />
+
+        <label class="label" id="lblCatType">Tipo</label>
+        <div class="seg">
+          <label class="seg__item">
+            <input type="radio" name="catType" value="normal" checked />
+            <span id="lblNormal">Normale</span>
+          </label>
+          <label class="seg__item">
+            <input type="radio" name="catType" value="private" />
+            <span id="lblPrivate">Privata</span> 🔒
+          </label>
+        </div>
+
+        <label class="label" for="categoryColor" id="lblCatColor">Colore</label>
+        <select class="input" id="categoryColor">
+          <option value="aqua">Aqua</option>
+          <option value="coral">Corallo</option>
+          <option value="sand">Sabbia</option>
+          <option value="mint">Menta</option>
+          <option value="sky">Cielo</option>
+          <option value="sunset">Sunset</option>
+        </select>
+
+        <div class="hint" id="catHint">Le categorie private si aprono solo con PIN.</div>
+      </div>
+
+      <div class="modal__foot">
+        <button class="btn btn--ghost" id="cancelCategoryModal" type="button">Annulla</button>
+        <button class="btn btn--primary" id="saveCategoryModal" type="button">Salva</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL: SBLOCCO -->
+  <dialog class="modal" id="unlockModal">
+    <div class="modal__panel">
+      <div class="modal__head">
+        <div class="modal__title" id="unlockTitle">Categoria privata</div>
+        <button class="iconbtn" id="closeUnlockModal" type="button" aria-label="Chiudi">✕</button>
+      </div>
+
+      <div class="modal__body">
+        <div class="hint" id="unlockHint">Inserisci il PIN dell’app per sbloccare.</div>
+        <input class="input" id="unlockPin" type="password" inputmode="numeric" placeholder="PIN" />
+      </div>
+
+      <div class="modal__foot">
+        <button class="btn btn--ghost" id="cancelUnlock" type="button">Annulla</button>
+        <button class="btn btn--primary" id="confirmUnlock" type="button">Sblocca</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- MODAL: TASK -->
+  <dialog class="modal" id="taskModal">
+    <div class="modal__panel">
+      <div class="modal__head">
+        <div class="modal__title" id="taskModalTitle">Nuova attività</div>
+        <button class="iconbtn" id="closeTaskModal" type="button" aria-label="Chiudi">✕</button>
+      </div>
+
+      <div class="modal__body">
+        <label class="label" for="taskText" id="lblTaskText">Testo</label>
+        <input class="input" id="taskText" type="text" maxlength="80" placeholder="Es. Uscire" />
+
+        <label class="label" for="taskPriority" id="lblPriority">Priorità</label>
+        <select class="input" id="taskPriority">
+          <option value="high" id="priHigh">Alta</option>
+          <option value="med" id="priMed" selected>Media</option>
+          <option value="low" id="priLow">Bassa</option>
+        </select>
+
+        <label class="label" for="taskNotes" id="lblNotes">Note (opzionale)</label>
+        <textarea class="input textarea" id="taskNotes" rows="4" placeholder="Dettagli..."></textarea>
+      </div>
+
+      <div class="modal__foot">
+        <button class="btn btn--ghost" id="cancelTaskModal" type="button">Annulla</button>
+        <button class="btn btn--primary" id="saveTaskModal" type="button">Salva</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- DATA SHEET -->
+  <dialog class="sheet" id="dataSheet">
+    <div class="sheet__panel">
+      <div class="sheet__grab"></div>
+      <div class="sheet__title" id="dataTitle">Dati</div>
+
+      <div class="sheet__sectionTitle" id="exportTitle">Export</div>
+      <button class="sheet__item" id="btnGenerateExport" type="button">Genera JSON</button>
+      <textarea class="sheet__textarea" id="exportArea" rows="6" placeholder="Qui comparirà il JSON..."></textarea>
+      <button class="sheet__item" id="btnCopyExport" type="button">Copia JSON</button>
+
+      <div class="sheet__sectionTitle" id="importTitle">Import</div>
+      <textarea class="sheet__textarea" id="importArea" rows="6" placeholder="Incolla qui il JSON da importare..."></textarea>
+      <button class="sheet__item" id="btnApplyImport" type="button">Importa</button>
+
+      <div class="sheet__sectionTitle" id="resetTitle">Reset</div>
+      <button class="sheet__item danger" id="btnReset" type="button">Reset demo</button>
+
+      <button class="sheet__close" id="btnCloseData" type="button">Chiudi</button>
+    </div>
+  </dialog>
+
+  <!-- SETTINGS SHEET -->
+  <dialog class="sheet" id="settingsSheet">
+    <div class="sheet__panel">
+      <div class="sheet__grab"></div>
+      <div class="sheet__title" id="settingsTitle">Impostazioni</div>
+
+      <div class="sheet__sectionTitle" id="langTitle">Lingua</div>
+      <select class="input" id="langSelect">
+        <option value="it">Italiano</option>
+        <option value="en">English</option>
+      </select>
+
+      <div class="sheet__sectionTitle" id="themeTitle">Tema</div>
+      <div class="row">
+        <button class="chip" id="btnThemeLight" type="button">☀️ <span id="lblLight">Chiaro</span></button>
+        <button class="chip" id="btnThemeDark" type="button">🌙 <span id="lblDark">Scuro</span></button>
+      </div>
+
+      <div class="sheet__sectionTitle" id="fontTitle">Dimensione font</div>
+      <div class="rangeRow">
+        <span class="rangeIcon" aria-hidden="true">A−</span>
+        <input id="fontRange" type="range" min="92" max="125" step="1" value="102" />
+        <span class="rangeIcon" aria-hidden="true">A+</span>
+      </div>
+
+      <div class="sheet__sectionTitle" id="pinTitle">PIN app (categorie private)</div>
+      <input class="input" id="pinInput" type="password" inputmode="numeric" placeholder="Imposta o cambia PIN" />
+      <div class="hint" id="pinHint">Il PIN viene salvato in modo hashato sul dispositivo.</div>
+      <button class="sheet__item" id="btnSavePin" type="button">Salva PIN</button>
+
+      <button class="sheet__close" id="btnCloseSettings" type="button">Chiudi</button>
+    </div>
+  </dialog>
+
+  <!-- App JS -->
+  <script src="/summer-list/app.js"></script>
+
+  <!-- ✅ Service Worker (GitHub Pages) -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/summer-list/service-worker.js").catch(() => {});
+      });
     }
-  ]
-}
+  </script>
+</body>
+</html>

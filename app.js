@@ -1,11 +1,12 @@
 "use strict";
 
 /* -------------------------------------------------------
-  Summer List — app.js (aggiornato)
+  Summer List — app.js
   - Offline/PWA: registra service-worker.js
   - Storage: IndexedDB con fallback localStorage
   - i18n, tema, font size, PIN hash, categorie private
   - Export/Import JSON, Reset demo
+  - Home filter: Tot / Fatte / In sospeso filtra categorie
 ------------------------------------------------------- */
 
 /* -------------------------------------------------------
@@ -83,10 +84,8 @@ const I18N = {
     deleteCategoryConfirm: (name, count) =>
       `Eliminare "${name}"?\nVerranno eliminate anche ${count} attività.`,
     deleteTaskConfirm: "Eliminare questa attività?",
-    importConfirm:
-      "Importare questi dati? Sovrascriverà quelli attuali.",
-    resetConfirm:
-      "Reset demo? Cancella tutto e rimette i dati di esempio.",
+    importConfirm: "Importare questi dati? Sovrascriverà quelli attuali.",
+    resetConfirm: "Reset demo? Cancella tutto e rimette i dati di esempio.",
     pinSaved: "PIN salvato.",
     copied: "Copiato!",
     selectedNowCopy: "Selezionato: ora fai Copia.",
@@ -213,53 +212,31 @@ const Storage = (() => {
   }
 
   function lsGet(key) {
-    try {
-      return localStorage.getItem(key) ?? null;
-    } catch {
-      return null;
-    }
+    try { return localStorage.getItem(key) ?? null; } catch { return null; }
   }
   function lsSet(key, value) {
-    try {
-      localStorage.setItem(key, value);
-      return true;
-    } catch {
-      return false;
-    }
+    try { localStorage.setItem(key, value); return true; } catch { return false; }
   }
   function lsDel(key) {
-    try {
-      localStorage.removeItem(key);
-      return true;
-    } catch {
-      return false;
-    }
+    try { localStorage.removeItem(key); return true; } catch { return false; }
   }
 
   return {
     async getString(key) {
       if (hasIDB()) {
-        try {
-          return await idbGet(key);
-        } catch {}
+        try { return await idbGet(key); } catch {}
       }
       return lsGet(key);
     },
     async setString(key, value) {
       if (hasIDB()) {
-        try {
-          await idbSet(key, value);
-          return true;
-        } catch {}
+        try { await idbSet(key, value); return true; } catch {}
       }
       return lsSet(key, value);
     },
     async del(key) {
       if (hasIDB()) {
-        try {
-          await idbDel(key);
-          return true;
-        } catch {}
+        try { await idbDel(key); return true; } catch {}
       }
       return lsDel(key);
     },
@@ -276,6 +253,8 @@ const unlocked = new Set(); // sblocco solo sessione
 let editingCategoryId = null;
 let editingTaskId = null;
 let pendingOpenCategoryId = null;
+
+let homeFilter = "all"; // "all" | "done" | "open"
 
 /* -------------------------------------------------------
    DOM
@@ -438,6 +417,27 @@ function wireEvents() {
     openCategoryModal({ mode: "edit", category: cat });
   });
 
+  // Dashboard filter (Tot / Fatte / In sospeso)
+  const cardTot = document.querySelector(".dash__card--a");
+  const cardDone = document.querySelector(".dash__card--b");
+  const cardOpen = document.querySelector(".dash__card--c");
+
+  cardTot?.addEventListener("click", () => {
+    homeFilter = "all";
+    renderDashboard();
+    renderCategories();
+  });
+  cardDone?.addEventListener("click", () => {
+    homeFilter = "done";
+    renderDashboard();
+    renderCategories();
+  });
+  cardOpen?.addEventListener("click", () => {
+    homeFilter = "open";
+    renderDashboard();
+    renderCategories();
+  });
+
   // Category modal
   el.closeCategoryModal.addEventListener("click", () => safeClose(el.categoryModal));
   el.cancelCategoryModal.addEventListener("click", () => safeClose(el.categoryModal));
@@ -491,7 +491,7 @@ function wireEvents() {
   el.btnThemeLight.addEventListener("click", () => setTheme("light"));
   el.btnThemeDark.addEventListener("click", () => setTheme("dark"));
 
-  // Settings: font size (scala tutto via rem su html in CSS)
+  // Settings: font size
   el.fontRange.addEventListener("input", async () => {
     state.settings.font = clamp(el.fontRange.value / 100, 0.92, 1.25);
     await saveState();
@@ -508,7 +508,7 @@ function wireEvents() {
     alert(t("pinSaved"));
   });
 
-  // Backdrop close (affidabile): se clicchi il backdrop, target è il dialog stesso
+  // Backdrop close
   addBackdropClose(el.dataSheet);
   addBackdropClose(el.settingsSheet);
   addBackdropClose(el.categoryModal);
@@ -611,6 +611,14 @@ function renderDashboard() {
   el.lblTotal.textContent = t("total");
   el.lblDone.textContent = t("done");
   el.lblOpen.textContent = t("open");
+
+  const cardTot = document.querySelector(".dash__card--a");
+  const cardDone = document.querySelector(".dash__card--b");
+  const cardOpen = document.querySelector(".dash__card--c");
+
+  cardTot?.classList.toggle("is-active", homeFilter === "all");
+  cardDone?.classList.toggle("is-active", homeFilter === "done");
+  cardOpen?.classList.toggle("is-active", homeFilter === "open");
 }
 
 function renderCategories() {
@@ -618,7 +626,21 @@ function renderCategories() {
   el.homeTip.textContent = t("tipHome");
   el.categoryList.innerHTML = "";
 
-  state.categories.forEach((c) => {
+  const categoriesToShow = state.categories.filter((c) => {
+    const stats = categoryStats(c.id);
+
+    if (homeFilter === "all") return true;
+
+    // done = categoria completa (almeno 1 task e tutte done)
+    if (homeFilter === "done") return stats.total > 0 && stats.done === stats.total;
+
+    // open = non completa (incluse vuote)
+    if (homeFilter === "open") return stats.total === 0 || stats.done < stats.total;
+
+    return true;
+  });
+
+  categoriesToShow.forEach((c) => {
     const stats = categoryStats(c.id);
 
     const li = document.createElement("li");
@@ -702,6 +724,7 @@ function renderTasks() {
       renderDashboard();
       updateCategorySub(cat.id);
       renderTasks();
+      if (!el.screenHome.hidden) renderCategories();
     });
     checkWrap.appendChild(cb);
 
@@ -790,9 +813,9 @@ function openCategoryModal({ mode, category }) {
 }
 
 function setCatTypeRadio(value) {
-  document
-    .querySelectorAll('input[name="catType"]')
-    .forEach((r) => (r.checked = r.value === value));
+  document.querySelectorAll('input[name="catType"]').forEach((r) => {
+    r.checked = r.value === value;
+  });
 }
 
 function getCatTypeRadio() {
@@ -841,7 +864,6 @@ async function saveCategoryFromModal() {
   safeClose(el.categoryModal);
 
   renderDashboard();
-
   if (!el.screenHome.hidden) renderCategories();
   if (!el.screenCategory.hidden) {
     const cat = getActiveCategory();
@@ -916,6 +938,7 @@ async function saveTaskFromModal() {
   renderDashboard();
   updateCategorySub(cat.id);
   renderTasks();
+  if (!el.screenHome.hidden) renderCategories();
 }
 
 /* -------------------------------------------------------
@@ -948,6 +971,7 @@ async function deleteTask(taskId) {
   await saveState();
   renderDashboard();
   renderTasks();
+  if (!el.screenHome.hidden) renderCategories();
 }
 
 /* -------------------------------------------------------
@@ -995,7 +1019,6 @@ async function applyImport() {
 
   state = normalizeState(incoming);
 
-  // default settings
   state.settings = state.settings || {};
   state.settings.lang = state.settings.lang || "it";
   state.settings.theme = state.settings.theme || "light";
@@ -1047,38 +1070,31 @@ function applyThemeAndFont() {
     "data-theme",
     state.settings.theme === "dark" ? "dark" : "light"
   );
-  // scala tutto (CSS usa rem su html)
   document.documentElement.style.setProperty("--fs", String(state.settings.font));
 }
 
 function applyI18n() {
   const lang = state.settings.lang;
 
-  // Top
   el.topSmall.textContent = el.screenHome.hidden ? t("category") : t("home");
   el.topBig.textContent = el.screenHome.hidden
     ? getActiveCategory()?.name ?? "—"
     : t("categories");
 
-  // Home
   el.homeSectionTitle.textContent = t("categories");
   el.homeTip.textContent = t("tipHome");
 
-  // Category
   el.catTip.textContent = t("tipCat");
   el.lblEditCategory.textContent = t("edit");
 
-  // Task modal labels
   el.priHigh.textContent = PRIORITY_LABEL.high[lang];
   el.priMed.textContent = PRIORITY_LABEL.med[lang];
   el.priLow.textContent = PRIORITY_LABEL.low[lang];
 
-  // Dashboard labels
   el.lblTotal.textContent = t("total");
   el.lblDone.textContent = t("done");
   el.lblOpen.textContent = t("open");
 
-  // Data sheet
   el.dataTitle.textContent = t("data");
   el.exportTitle.textContent = t("export");
   el.importTitle.textContent = t("import");
@@ -1089,7 +1105,6 @@ function applyI18n() {
   el.btnCloseData.textContent = t("close");
   el.importArea.placeholder = t("pasteHere");
 
-  // Settings sheet
   el.settingsTitle.textContent = t("settings");
   el.langTitle.textContent = t("lang");
   el.themeTitle.textContent = t("theme");
@@ -1115,11 +1130,9 @@ function freshState() {
 
 async function loadState() {
   try {
-    // v2 (IDB/localStorage wrapper)
     const rawV2 = await Storage.getString(STORAGE_KEY);
     if (rawV2) return normalizeState(JSON.parse(rawV2));
 
-    // migrazione legacy v1
     const legacy = safeLocalStorageGet("summer_list_topplus_v1");
     if (legacy) {
       const s = normalizeState(JSON.parse(legacy));
@@ -1169,7 +1182,7 @@ function normalizeState(s) {
       order: typeof t.order === "number" ? t.order : 0,
       createdAt: typeof t.createdAt === "number" ? t.createdAt : Date.now(),
     }))
-    .filter((t) => t.categoryId); // evita task orfane
+    .filter((t) => t.categoryId);
 
   out.settings.lang = out.settings.lang === "en" ? "en" : "it";
   out.settings.theme = out.settings.theme === "dark" ? "dark" : "light";
@@ -1180,7 +1193,6 @@ function normalizeState(s) {
 
   if (typeof out.settings.pinHash !== "string") delete out.settings.pinHash;
 
-  // se la categoria attiva non esiste più, reset
   const exists = out.categories.some((c) => c.id === out.ui.activeCategoryId);
   if (!exists) out.ui.activeCategoryId = out.categories[0]?.id ?? null;
 
@@ -1240,9 +1252,7 @@ function safeShowModal(dlg) {
     if (!dlg.open && typeof dlg.showModal === "function") dlg.showModal();
     else if (!dlg.open) dlg.setAttribute("open", "");
   } catch {
-    try {
-      dlg.setAttribute("open", "");
-    } catch {}
+    try { dlg.setAttribute("open", ""); } catch {}
   }
 }
 
@@ -1251,25 +1261,18 @@ function safeClose(dlg) {
     if (dlg.open && typeof dlg.close === "function") dlg.close();
     else dlg.removeAttribute("open");
   } catch {
-    try {
-      dlg.removeAttribute("open");
-    } catch {}
+    try { dlg.removeAttribute("open"); } catch {}
   }
 }
 
 function addBackdropClose(dlg) {
   dlg.addEventListener("click", (e) => {
-    // quando clicchi backdrop, target è proprio il <dialog>
     if (e.target === dlg) safeClose(dlg);
   });
 }
 
 function safeLocalStorageGet(key) {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
+  try { return localStorage.getItem(key); } catch { return null; }
 }
 
 /* -------------------------------------------------------

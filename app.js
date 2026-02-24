@@ -1,15 +1,16 @@
 "use strict";
 
 /* -------------------------------------------------------
-  Summer List — app.js (v8)
-  - Storage: IndexedDB con fallback localStorage
-  - i18n, tema, font size, PIN hash, categorie private
-  - Export/Import JSON, Reset demo
-  - ✅ Dashboard filter: Tot / Fatte / In sospeso
-  - ✅ Confirm interno (NO confirm() del browser)
+  Summer List — app.js (v9)
+  - Tema chiaro/scuro: ora cambia davvero colori (CSS usa body[data-theme])
+  - Dashboard:
+      Tot -> categorie divise
+      Fatte -> tutte attività fatte (no categorie)
+      In sospeso -> tutte attività non fatte (no categorie)
+  - Confirm interno (no confirm browser)
 ------------------------------------------------------- */
 
-const STORAGE_KEY = "summer_list_topplus_v2"; // bump versione
+const STORAGE_KEY = "summer_list_topplus_v2";
 
 const PRIORITY_LABEL = {
   high: { it: "Alta", en: "High" },
@@ -21,6 +22,10 @@ const I18N = {
   it: {
     home: "Home",
     categories: "Categorie",
+    tasks: "Attività",
+    doneTasks: "Attività fatte",
+    openTasks: "Attività in sospeso",
+
     category: "Categoria",
     data: "Dati",
     settings: "Impostazioni",
@@ -28,8 +33,12 @@ const I18N = {
     total: "Tot",
     done: "Fatte",
     open: "In sospeso",
+
     tipHome: "Tocca una categoria per aprirla. Le categorie private richiedono PIN.",
+    tipHomeDone: "Qui vedi tutte le attività completate (non divise per categoria).",
+    tipHomeOpen: "Qui vedi tutte le attività da fare (non divise per categoria).",
     tipCat: "Spunta le attività completate. Puoi modificare con ✎ o eliminare con 🗑.",
+
     newCategory: "Nuova categoria",
     renameCategory: "Modifica categoria",
     catName: "Nome categoria",
@@ -40,11 +49,13 @@ const I18N = {
     catHint: "Le categorie private si aprono solo con PIN.",
     cancel: "Annulla",
     save: "Salva",
+
     newTask: "Nuova attività",
     editTask: "Modifica attività",
     text: "Testo",
     priority: "Priorità",
     notes: "Note (opzionale)",
+
     export: "Export",
     import: "Import",
     reset: "Reset demo",
@@ -53,19 +64,24 @@ const I18N = {
     copyJson: "Copia JSON",
     applyImport: "Importa",
     pasteHere: "Incolla qui il JSON da importare...",
+
     unlockTitle: "Categoria privata",
     unlockHint: "Inserisci il PIN dell’app per sbloccare.",
     unlock: "Sblocca",
+
     pinTitle: "PIN app (categorie private)",
     pinHint: "Il PIN viene salvato in modo hashato sul dispositivo.",
     savePin: "Salva PIN",
+
     lang: "Lingua",
     theme: "Tema",
     light: "Chiaro",
     dark: "Scuro",
     fontSize: "Dimensione font",
+
     setPinFirst: "Prima imposta un PIN nelle Impostazioni per creare categorie private.",
     wrongPin: "PIN errato.",
+
     importConfirm: "Importare questi dati? Sovrascriverà quelli attuali.",
     resetConfirm: "Reset demo? Cancella tutto e rimette i dati di esempio.",
     pinSaved: "PIN salvato.",
@@ -84,6 +100,10 @@ const I18N = {
   en: {
     home: "Home",
     categories: "Categories",
+    tasks: "Tasks",
+    doneTasks: "Done tasks",
+    openTasks: "Open tasks",
+
     category: "Category",
     data: "Data",
     settings: "Settings",
@@ -91,8 +111,12 @@ const I18N = {
     total: "Total",
     done: "Done",
     open: "Open",
+
     tipHome: "Tap a category to open it. Private categories require a PIN.",
+    tipHomeDone: "Here you see all completed tasks (not grouped by category).",
+    tipHomeOpen: "Here you see all open tasks (not grouped by category).",
     tipCat: "Tick completed tasks. You can edit with ✎ or delete with 🗑.",
+
     newCategory: "New category",
     renameCategory: "Edit category",
     catName: "Category name",
@@ -103,11 +127,13 @@ const I18N = {
     catHint: "Private categories open only with a PIN.",
     cancel: "Cancel",
     save: "Save",
+
     newTask: "New task",
     editTask: "Edit task",
     text: "Text",
     priority: "Priority",
     notes: "Notes (optional)",
+
     export: "Export",
     import: "Import",
     reset: "Reset demo",
@@ -116,19 +142,24 @@ const I18N = {
     copyJson: "Copy JSON",
     applyImport: "Import",
     pasteHere: "Paste JSON to import...",
+
     unlockTitle: "Private category",
     unlockHint: "Enter app PIN to unlock.",
     unlock: "Unlock",
+
     pinTitle: "App PIN (private categories)",
     pinHint: "Your PIN is stored hashed on-device.",
     savePin: "Save PIN",
+
     lang: "Language",
     theme: "Theme",
     light: "Light",
     dark: "Dark",
     fontSize: "Font size",
+
     setPinFirst: "Set an app PIN in Settings before creating private categories.",
     wrongPin: "Wrong PIN.",
+
     importConfirm: "Import these data? This will overwrite current data.",
     resetConfirm: "Reset demo? This will delete everything and restore sample data.",
     pinSaved: "PIN saved.",
@@ -235,14 +266,19 @@ const Storage = (() => {
 ------------------------------------------------------- */
 let state = freshState();
 let activeCategoryId = null;
-const unlocked = new Set(); // sblocco solo sessione
+const unlocked = new Set();
 
 let editingCategoryId = null;
 let editingTaskId = null;
 let pendingOpenCategoryId = null;
 
-// ✅ filtro dashboard home
-let homeFilter = "all"; // "all" | "done" | "open"
+/*
+  ✅ Home view mode:
+  - "categories" => vista normale divisa in categorie (Tot)
+  - "done" => lista task completate (Fatte)
+  - "open" => lista task non completate (In sospeso)
+*/
+let homeMode = "categories";
 
 /* -------------------------------------------------------
    DOM
@@ -271,12 +307,14 @@ const el = {
 
   homeSectionTitle: document.getElementById("homeSectionTitle"),
   homeTip: document.getElementById("homeTip"),
-  catTip: document.getElementById("catTip"),
 
   categoryList: document.getElementById("categoryList"),
+  homeTaskList: document.getElementById("homeTaskList"),
+
   taskList: document.getElementById("taskList"),
   categoryTitle: document.getElementById("categoryTitle"),
   categorySub: document.getElementById("categorySub"),
+  catTip: document.getElementById("catTip"),
 
   btnEditCategory: document.getElementById("btnEditCategory"),
   lblEditCategory: document.getElementById("lblEditCategory"),
@@ -352,7 +390,6 @@ const el = {
   priMed: document.getElementById("priMed"),
   priLow: document.getElementById("priLow"),
 
-  // ✅ confirm modal
   confirmModal: document.getElementById("confirmModal"),
   confirmTitle: document.getElementById("confirmTitle"),
   confirmText: document.getElementById("confirmText"),
@@ -371,11 +408,9 @@ const el = {
   state.settings = state.settings || {};
   state.settings.lang = state.settings.lang || "it";
   state.settings.theme = state.settings.theme || "light";
-  state.settings.font =
-    typeof state.settings.font === "number" ? state.settings.font : 1.02;
+  state.settings.font = typeof state.settings.font === "number" ? state.settings.font : 1.02;
 
-  activeCategoryId =
-    state.ui?.activeCategoryId || state.categories[0]?.id || null;
+  activeCategoryId = state.ui?.activeCategoryId || state.categories[0]?.id || null;
 
   await saveState();
 
@@ -417,10 +452,10 @@ function wireEvents() {
     openCategoryModal({ mode: "edit", category: cat });
   });
 
-  // Dashboard filter
-  el.dashCardTotal?.addEventListener("click", () => setHomeFilter("all"));
-  el.dashCardDone?.addEventListener("click", () => setHomeFilter("done"));
-  el.dashCardOpen?.addEventListener("click", () => setHomeFilter("open"));
+  /* ✅ Dashboard mode */
+  el.dashCardTotal.addEventListener("click", () => setHomeMode("categories"));
+  el.dashCardDone.addEventListener("click", () => setHomeMode("done"));
+  el.dashCardOpen.addEventListener("click", () => setHomeMode("open"));
 
   // Category modal
   el.closeCategoryModal.addEventListener("click", () => safeClose(el.categoryModal));
@@ -455,7 +490,7 @@ function wireEvents() {
     }
   });
 
-  // ✅ Confirm modal (internal)
+  // Confirm modal
   el.closeConfirmModal.addEventListener("click", () => resolveConfirm(false));
   el.confirmCancel.addEventListener("click", () => resolveConfirm(false));
   el.confirmOk.addEventListener("click", () => resolveConfirm(true));
@@ -471,9 +506,7 @@ function wireEvents() {
     state.settings.lang = el.langSelect.value === "en" ? "en" : "it";
     await saveState();
     applyI18n();
-    renderDashboard();
-    if (!el.screenHome.hidden) renderCategories();
-    if (!el.screenCategory.hidden) renderTasks();
+    renderAll();
   });
 
   // Settings: theme
@@ -506,10 +539,20 @@ function wireEvents() {
   addBackdropClose(el.confirmModal);
 }
 
-function setHomeFilter(next) {
-  homeFilter = next;
+function setHomeMode(mode) {
+  homeMode = mode;
+  renderAll();
+}
+
+function renderAll() {
   renderDashboard();
-  renderCategories();
+
+  if (!el.screenHome.hidden) {
+    renderHome();
+  }
+  if (!el.screenCategory.hidden) {
+    renderTasks();
+  }
 }
 
 /* -------------------------------------------------------
@@ -523,8 +566,7 @@ function goHome() {
   el.topSmall.textContent = t("home");
   el.topBig.textContent = t("categories");
 
-  renderDashboard();
-  renderCategories();
+  renderAll();
 }
 
 async function tryOpenCategory(catId) {
@@ -566,11 +608,7 @@ async function openCategory(catId) {
   el.topBig.textContent = cat ? cat.name : "—";
   el.categoryTitle.textContent = cat ? cat.name : "—";
 
-  const stats = categoryStats(catId);
-  const unit = state.settings.lang === "it" ? "attività" : "tasks";
-  const doneLabel = state.settings.lang === "it" ? "fatte" : "done";
-  el.categorySub.textContent = `${stats.total} ${unit} · ${stats.done} ${doneLabel}`;
-
+  updateCategorySub(catId);
   renderTasks();
 }
 
@@ -608,31 +646,41 @@ function renderDashboard() {
   el.lblDone.textContent = t("done");
   el.lblOpen.textContent = t("open");
 
-  el.dashCardTotal?.classList.toggle("is-active", homeFilter === "all");
-  el.dashCardDone?.classList.toggle("is-active", homeFilter === "done");
-  el.dashCardOpen?.classList.toggle("is-active", homeFilter === "open");
+  el.dashCardTotal.classList.toggle("is-active", homeMode === "categories");
+  el.dashCardDone.classList.toggle("is-active", homeMode === "done");
+  el.dashCardOpen.classList.toggle("is-active", homeMode === "open");
+}
+
+function renderHome() {
+  // modalità:
+  // categories -> mostra categoryList
+  // done/open -> mostra homeTaskList
+  if (homeMode === "categories") {
+    el.homeSectionTitle.textContent = t("categories");
+    el.homeTip.textContent = t("tipHome");
+
+    el.categoryList.hidden = false;
+    el.homeTaskList.hidden = true;
+
+    renderCategories();
+    return;
+  }
+
+  // done/open tasks list
+  const isDone = homeMode === "done";
+  el.homeSectionTitle.textContent = isDone ? t("doneTasks") : t("openTasks");
+  el.homeTip.textContent = isDone ? t("tipHomeDone") : t("tipHomeOpen");
+
+  el.categoryList.hidden = true;
+  el.homeTaskList.hidden = false;
+
+  renderHomeTasks(isDone ? "done" : "open");
 }
 
 function renderCategories() {
-  el.homeSectionTitle.textContent = t("categories");
-  el.homeTip.textContent = t("tipHome");
   el.categoryList.innerHTML = "";
 
-  const categoriesToShow = state.categories.filter((c) => {
-    const stats = categoryStats(c.id);
-
-    if (homeFilter === "all") return true;
-
-    // done = categoria completa (almeno 1 task e tutte done)
-    if (homeFilter === "done") return stats.total > 0 && stats.done === stats.total;
-
-    // open = categoria non completa (incluse 0 task)
-    if (homeFilter === "open") return stats.total === 0 || stats.done < stats.total;
-
-    return true;
-  });
-
-  categoriesToShow.forEach((c) => {
+  state.categories.forEach((c) => {
     const stats = categoryStats(c.id);
 
     const li = document.createElement("li");
@@ -688,6 +736,82 @@ function renderCategories() {
   });
 }
 
+function renderHomeTasks(mode) {
+  // mode: "done" | "open"
+  el.homeTaskList.innerHTML = "";
+
+  const tasks = state.tasks
+    .filter((tItem) => (mode === "done" ? tItem.done : !tItem.done))
+    .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+
+  tasks.forEach((tItem) => {
+    const cat = state.categories.find((c) => c.id === tItem.categoryId) || null;
+
+    const li = document.createElement("li");
+    li.className = "task";
+
+    const checkWrap = document.createElement("div");
+    checkWrap.className = "task__check";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!tItem.done;
+    cb.addEventListener("change", async () => {
+      tItem.done = cb.checked;
+      await saveState();
+      renderAll();
+    });
+    checkWrap.appendChild(cb);
+
+    const main = document.createElement("div");
+    main.className = "task__main";
+
+    const row = document.createElement("div");
+    row.className = "task__row";
+
+    const text = document.createElement("div");
+    text.className = "task__text" + (tItem.done ? " done" : "");
+    text.textContent = tItem.text;
+
+    const badge = document.createElement("span");
+    // qui uso badge per mostrare categoria (come richiesto: NON divise, ma visibili)
+    badge.className = "badge";
+    badge.textContent = cat ? cat.name : "—";
+
+    row.appendChild(text);
+    row.appendChild(badge);
+
+    const notes = document.createElement("div");
+    notes.className = "task__notes";
+    notes.textContent = (tItem.notes || "").trim() ? tItem.notes : "—";
+
+    main.appendChild(row);
+    main.appendChild(notes);
+
+    const actions = document.createElement("div");
+    actions.className = "actions";
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "mini mini--danger";
+    delBtn.type = "button";
+    delBtn.title = "Delete";
+    delBtn.textContent = "🗑";
+    delBtn.addEventListener("click", async () => {
+      await deleteTask(tItem.id);
+    });
+
+    actions.appendChild(delBtn);
+
+    li.appendChild(checkWrap);
+    li.appendChild(main);
+    li.appendChild(actions);
+
+    el.homeTaskList.appendChild(li);
+  });
+
+  // se lista vuota, lasciamo un tip testuale (già c’è) e basta
+}
+
 function renderTasks() {
   el.catTip.textContent = t("tipCat");
   el.lblEditCategory.textContent = t("edit");
@@ -713,9 +837,8 @@ function renderTasks() {
     cb.addEventListener("change", async () => {
       tItem.done = cb.checked;
       await saveState();
-      renderDashboard();
+      renderAll();
       updateCategorySub(cat.id);
-      renderTasks();
     });
     checkWrap.appendChild(cb);
 
@@ -806,9 +929,7 @@ function openCategoryModal({ mode, category }) {
 }
 
 function setCatTypeRadio(value) {
-  document
-    .querySelectorAll('input[name="catType"]')
-    .forEach((r) => (r.checked = r.value === value));
+  document.querySelectorAll('input[name="catType"]').forEach((r) => (r.checked = r.value === value));
 }
 
 function getCatTypeRadio() {
@@ -855,10 +976,8 @@ async function saveCategoryFromModal() {
 
   await saveState();
   safeClose(el.categoryModal);
+  renderAll();
 
-  renderDashboard();
-
-  if (!el.screenHome.hidden) renderCategories();
   if (!el.screenCategory.hidden) {
     const cat = getActiveCategory();
     el.topBig.textContent = cat ? cat.name : "—";
@@ -928,14 +1047,12 @@ async function saveTaskFromModal() {
 
   await saveState();
   safeClose(el.taskModal);
-
-  renderDashboard();
+  renderAll();
   updateCategorySub(cat.id);
-  renderTasks();
 }
 
 /* -------------------------------------------------------
-   ✅ CONFIRM INTERNAL (Promise)
+   CONFIRM INTERNAL
 ------------------------------------------------------- */
 let _confirmResolver = null;
 
@@ -963,7 +1080,7 @@ function resolveConfirm(value) {
 }
 
 /* -------------------------------------------------------
-   DELETE (NO confirm() browser)
+   DELETE (NO confirm browser)
 ------------------------------------------------------- */
 async function deleteCategory(catId) {
   const cat = state.categories.find((c) => c.id === catId);
@@ -992,15 +1109,13 @@ async function deleteCategory(catId) {
   if (activeCategoryId === catId) activeCategoryId = state.categories[0]?.id || null;
 
   await saveState();
-  renderDashboard();
+  renderAll();
   goHome();
 }
 
 async function deleteTask(taskId) {
   const msg =
-    state.settings.lang === "it"
-      ? "Eliminare questa attività?"
-      : "Delete this task?";
+    state.settings.lang === "it" ? "Eliminare questa attività?" : "Delete this task?";
 
   const ok = await openConfirm({
     title: t("confirmDeleteTaskTitle"),
@@ -1013,8 +1128,7 @@ async function deleteTask(taskId) {
 
   state.tasks = state.tasks.filter((t) => t.id !== taskId);
   await saveState();
-  renderDashboard();
-  renderTasks();
+  renderAll();
 }
 
 /* -------------------------------------------------------
@@ -1024,7 +1138,7 @@ function generateExport() {
   const payload = {
     exportedAt: new Date().toISOString(),
     app: "Summer List",
-    version: 8,
+    version: 9,
     data: state,
   };
   el.exportArea.value = JSON.stringify(payload, null, 2);
@@ -1071,8 +1185,7 @@ async function applyImport() {
   state.settings = state.settings || {};
   state.settings.lang = state.settings.lang || "it";
   state.settings.theme = state.settings.theme || "light";
-  state.settings.font =
-    typeof state.settings.font === "number" ? state.settings.font : 1.02;
+  state.settings.font = typeof state.settings.font === "number" ? state.settings.font : 1.02;
 
   activeCategoryId = state.categories[0]?.id || null;
 
@@ -1120,35 +1233,28 @@ async function setTheme(theme) {
 }
 
 function applyThemeAndFont() {
-  document.body.setAttribute(
-    "data-theme",
-    state.settings.theme === "dark" ? "dark" : "light"
-  );
+  document.body.setAttribute("data-theme", state.settings.theme === "dark" ? "dark" : "light");
   document.documentElement.style.setProperty("--fs", String(state.settings.font));
 }
 
 function applyI18n() {
   const lang = state.settings.lang;
 
+  // Top
   el.topSmall.textContent = el.screenHome.hidden ? t("category") : t("home");
-  el.topBig.textContent = el.screenHome.hidden
-    ? getActiveCategory()?.name ?? "—"
-    : t("categories");
+  el.topBig.textContent = el.screenHome.hidden ? (getActiveCategory()?.name ?? "—") : t("categories");
 
-  el.homeSectionTitle.textContent = t("categories");
-  el.homeTip.textContent = t("tipHome");
-
-  el.catTip.textContent = t("tipCat");
-  el.lblEditCategory.textContent = t("edit");
-
-  el.priHigh.textContent = PRIORITY_LABEL.high[lang];
-  el.priMed.textContent = PRIORITY_LABEL.med[lang];
-  el.priLow.textContent = PRIORITY_LABEL.low[lang];
-
+  // Dashboard labels
   el.lblTotal.textContent = t("total");
   el.lblDone.textContent = t("done");
   el.lblOpen.textContent = t("open");
 
+  // Task priority
+  el.priHigh.textContent = PRIORITY_LABEL.high[lang];
+  el.priMed.textContent = PRIORITY_LABEL.med[lang];
+  el.priLow.textContent = PRIORITY_LABEL.low[lang];
+
+  // Data sheet
   el.dataTitle.textContent = t("data");
   el.exportTitle.textContent = t("export");
   el.importTitle.textContent = t("import");
@@ -1159,6 +1265,7 @@ function applyI18n() {
   el.btnCloseData.textContent = t("close");
   el.importArea.placeholder = t("pasteHere");
 
+  // Settings sheet
   el.settingsTitle.textContent = t("settings");
   el.langTitle.textContent = t("lang");
   el.themeTitle.textContent = t("theme");
@@ -1169,7 +1276,7 @@ function applyI18n() {
   el.lblLight.textContent = t("light");
   el.lblDark.textContent = t("dark");
 
-  // confirm modal buttons
+  // Confirm
   el.confirmCancel.textContent = t("cancel");
 }
 
@@ -1196,7 +1303,6 @@ async function loadState() {
       await Storage.setString(STORAGE_KEY, JSON.stringify(s));
       return s;
     }
-
     return freshState();
   } catch {
     return freshState();
@@ -1215,8 +1321,7 @@ function normalizeState(s) {
   out.categories = Array.isArray(s?.categories) ? s.categories : [];
   out.tasks = Array.isArray(s?.tasks) ? s.tasks : [];
   out.ui = s && typeof s.ui === "object" && s.ui ? s.ui : { activeCategoryId: null };
-  out.settings =
-    s && typeof s.settings === "object" && s.settings ? s.settings : out.settings;
+  out.settings = s && typeof s.settings === "object" && s.settings ? s.settings : out.settings;
 
   out.categories = out.categories
     .filter((c) => c && typeof c.id === "string" && typeof c.name === "string")
@@ -1243,10 +1348,7 @@ function normalizeState(s) {
 
   out.settings.lang = out.settings.lang === "en" ? "en" : "it";
   out.settings.theme = out.settings.theme === "dark" ? "dark" : "light";
-  out.settings.font =
-    typeof out.settings.font === "number"
-      ? clamp(out.settings.font, 0.92, 1.25)
-      : 1.02;
+  out.settings.font = typeof out.settings.font === "number" ? clamp(out.settings.font, 0.92, 1.25) : 1.02;
 
   if (typeof out.settings.pinHash !== "string") delete out.settings.pinHash;
 
@@ -1277,80 +1379,4 @@ function uid() {
 }
 
 function clamp(v, a, b) {
-  return Math.max(a, Math.min(b, v));
-}
-
-function colorClass(color) {
-  const allowed = new Set(["aqua", "coral", "sand", "mint", "sky", "sunset"]);
-  return "card--" + (allowed.has(color) ? color : "aqua");
-}
-
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (m) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;",
-  }[m]));
-}
-
-async function sha256(text) {
-  const enc = new TextEncoder().encode(text);
-  const buf = await crypto.subtle.digest("SHA-256", enc);
-  return [...new Uint8Array(buf)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-/* Dialog helpers */
-function safeShowModal(dlg) {
-  try {
-    if (!dlg.open && typeof dlg.showModal === "function") dlg.showModal();
-    else if (!dlg.open) dlg.setAttribute("open", "");
-  } catch {
-    try { dlg.setAttribute("open", ""); } catch {}
-  }
-}
-
-function safeClose(dlg) {
-  try {
-    if (dlg.open && typeof dlg.close === "function") dlg.close();
-    else dlg.removeAttribute("open");
-  } catch {
-    try { dlg.removeAttribute("open"); } catch {}
-  }
-}
-
-function addBackdropClose(dlg) {
-  dlg.addEventListener("click", (e) => {
-    if (e.target === dlg) {
-      // se è confirm modal e c'è una promise aperta → annulla
-      if (dlg === el.confirmModal && _confirmResolver) resolveConfirm(false);
-      else safeClose(dlg);
-    }
-  });
-}
-
-function safeLocalStorageGet(key) {
-  try { return localStorage.getItem(key); } catch { return null; }
-}
-
-/* -------------------------------------------------------
-   DEMO
-------------------------------------------------------- */
-function ensureDemoIfEmpty() {
-  if (state.categories.length) return;
-
-  const c1 = { id: uid(), name: "Attività", color: "aqua", isPrivate: false };
-  const c2 = { id: uid(), name: "Drink", color: "sunset", isPrivate: false };
-
-  state.categories = [c1, c2];
-  state.tasks = [
-    { id: uid(), categoryId: c1.id, text: "Uscire", priority: "med", notes: "", done: false, order: 0, createdAt: Date.now() },
-    { id: uid(), categoryId: c1.id, text: "Fun", priority: "low", notes: "Idee per serata", done: true, order: 1, createdAt: Date.now() },
-    { id: uid(), categoryId: c2.id, text: "Limonata", priority: "low", notes: "Menta + ghiaccio", done: false, order: 0, createdAt: Date.now() },
-  ];
-
-  state.settings = state.settings || { lang: "it", theme: "light", font: 1.02 };
-}
+  return Math.max(a, Math.min(b, v

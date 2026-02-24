@@ -19,8 +19,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- ✅ CSS (CACHE-BUST) -->
-  <link rel="stylesheet" href="/summer-list-pwa/styles.css?v=7" />
+  <!-- ✅ CACHE-BUST -->
+  <link rel="stylesheet" href="/summer-list-pwa/styles.css?v=8" />
 </head>
 
 <body>
@@ -47,15 +47,15 @@
     <!-- HOME -->
     <section class="screen" id="screenHome">
       <div class="dash">
-        <div class="dash__card dash__card--a">
+        <div class="dash__card dash__card--a" id="dashCardTotal" role="button" tabindex="0">
           <div class="dash__num" id="dashTotal">0</div>
           <div class="dash__lbl" id="lblTotal">Tot</div>
         </div>
-        <div class="dash__card dash__card--b">
+        <div class="dash__card dash__card--b" id="dashCardDone" role="button" tabindex="0">
           <div class="dash__num" id="dashDone">0</div>
           <div class="dash__lbl" id="lblDone">Fatte</div>
         </div>
-        <div class="dash__card dash__card--c">
+        <div class="dash__card dash__card--c" id="dashCardOpen" role="button" tabindex="0">
           <div class="dash__num" id="dashOpen">0</div>
           <div class="dash__lbl" id="lblOpen">In sospeso</div>
         </div>
@@ -187,6 +187,25 @@
     </div>
   </dialog>
 
+  <!-- ✅ MODAL: CONFERMA (NO confirm() del browser) -->
+  <dialog class="modal" id="confirmModal">
+    <div class="modal__panel">
+      <div class="modal__head">
+        <div class="modal__title" id="confirmTitle">Conferma</div>
+        <button class="iconbtn" id="closeConfirmModal" type="button" aria-label="Chiudi">✕</button>
+      </div>
+
+      <div class="modal__body">
+        <div class="confirmText" id="confirmText">—</div>
+      </div>
+
+      <div class="modal__foot">
+        <button class="btn btn--ghost" id="confirmCancel" type="button">Annulla</button>
+        <button class="btn btn--danger" id="confirmOk" type="button">Ok</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- DATA SHEET -->
   <dialog class="sheet" id="dataSheet">
     <div class="sheet__panel">
@@ -244,13 +263,13 @@
   </dialog>
 
   <!-- ✅ App JS (CACHE-BUST) -->
-  <script src="/summer-list-pwa/app.js?v=7"></script>
+  <script src="/summer-list-pwa/app.js?v=8"></script>
 
-  <!-- ✅ Service Worker: SOLO UNA REGISTRAZIONE (NO DOPPIA) -->
+  <!-- ✅ Service Worker (solo qui) -->
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/summer-list-pwa/service-worker.js?v=7").catch(() => {});
+        navigator.serviceWorker.register("/summer-list-pwa/service-worker.js?v=8").catch(() => {});
       });
     }
   </script>

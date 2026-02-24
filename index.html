@@ -3,13 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#00F5D4" />
+
   <title>Summer List</title>
+  <meta name="theme-color" content="#00F5D4" />
 
   <!-- PWA -->
-  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="manifest" href="/summer-list-pwa/manifest.webmanifest" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- iOS icons (opzionale, ma aiuta) -->
+  <link rel="apple-touch-icon" href="/summer-list-pwa/icons/icon-192.png" />
 
   <!-- Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,7 +21,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <!-- CSS -->
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="/summer-list-pwa/styles.css" />
 </head>
 
 <body>
@@ -239,13 +243,13 @@
   </dialog>
 
   <!-- App JS -->
-  <script src="./app.js"></script>
+  <script src="/summer-list-pwa/app.js"></script>
 
-  <!-- ✅ Service Worker -->
+  <!-- Service Worker (GitHub Pages / repo summer-list-pwa) -->
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+        navigator.serviceWorker.register("/summer-list-pwa/service-worker.js").catch(() => {});
       });
     }
   </script>

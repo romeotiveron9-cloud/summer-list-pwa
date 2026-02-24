@@ -236,26 +236,54 @@ const Storage = (() => {
   }
 
   function lsGet(key) {
-    try { return localStorage.getItem(key) ?? null; } catch { return null; }
+    try {
+      return localStorage.getItem(key) ?? null;
+    } catch {
+      return null;
+    }
   }
   function lsSet(key, value) {
-    try { localStorage.setItem(key, value); return true; } catch { return false; }
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch {
+      return false;
+    }
   }
   function lsDel(key) {
-    try { localStorage.removeItem(key); return true; } catch { return false; }
+    try {
+      localStorage.removeItem(key);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   return {
     async getString(key) {
-      if (hasIDB()) { try { return await idbGet(key); } catch {} }
+      if (hasIDB()) {
+        try {
+          return await idbGet(key);
+        } catch {}
+      }
       return lsGet(key);
     },
     async setString(key, value) {
-      if (hasIDB()) { try { await idbSet(key, value); return true; } catch {} }
+      if (hasIDB()) {
+        try {
+          await idbSet(key, value);
+          return true;
+        } catch {}
+      }
       return lsSet(key, value);
     },
     async del(key) {
-      if (hasIDB()) { try { await idbDel(key); return true; } catch {} }
+      if (hasIDB()) {
+        try {
+          await idbDel(key);
+          return true;
+        } catch {}
+      }
       return lsDel(key);
     },
   };
@@ -515,7 +543,7 @@ function wireEvents() {
 
   // Settings: font size
   el.fontRange.addEventListener("input", async () => {
-    state.settings.font = clamp(el.fontRange.value / 100, 0.92, 1.25);
+    state.settings.font = clamp(Number(el.fontRange.value) / 100, 0.92, 1.25);
     await saveState();
     applyThemeAndFont();
   });
@@ -652,9 +680,6 @@ function renderDashboard() {
 }
 
 function renderHome() {
-  // modalità:
-  // categories -> mostra categoryList
-  // done/open -> mostra homeTaskList
   if (homeMode === "categories") {
     el.homeSectionTitle.textContent = t("categories");
     el.homeTip.textContent = t("tipHome");
@@ -666,7 +691,6 @@ function renderHome() {
     return;
   }
 
-  // done/open tasks list
   const isDone = homeMode === "done";
   el.homeSectionTitle.textContent = isDone ? t("doneTasks") : t("openTasks");
   el.homeTip.textContent = isDone ? t("tipHomeDone") : t("tipHomeOpen");
@@ -691,7 +715,9 @@ function renderCategories() {
 
     const title = document.createElement("div");
     title.className = "title";
-    title.innerHTML = `${c.isPrivate ? `<span class="lock">🔒</span>` : ""}<span>${escapeHtml(c.name)}</span>`;
+    title.innerHTML = `${c.isPrivate ? `<span class="lock">🔒</span>` : ""}<span>${escapeHtml(
+      c.name
+    )}</span>`;
 
     const meta = document.createElement("div");
     meta.className = "meta";
@@ -737,7 +763,6 @@ function renderCategories() {
 }
 
 function renderHomeTasks(mode) {
-  // mode: "done" | "open"
   el.homeTaskList.innerHTML = "";
 
   const tasks = state.tasks
@@ -774,7 +799,6 @@ function renderHomeTasks(mode) {
     text.textContent = tItem.text;
 
     const badge = document.createElement("span");
-    // qui uso badge per mostrare categoria (come richiesto: NON divise, ma visibili)
     badge.className = "badge";
     badge.textContent = cat ? cat.name : "—";
 
@@ -808,8 +832,6 @@ function renderHomeTasks(mode) {
 
     el.homeTaskList.appendChild(li);
   });
-
-  // se lista vuota, lasciamo un tip testuale (già c’è) e basta
 }
 
 function renderTasks() {
@@ -874,9 +896,7 @@ function renderTasks() {
     editBtn.type = "button";
     editBtn.title = t("edit");
     editBtn.textContent = "✎";
-    editBtn.addEventListener("click", () =>
-      openTaskModal({ mode: "edit", task: tItem })
-    );
+    editBtn.addEventListener("click", () => openTaskModal({ mode: "edit", task: tItem }));
 
     const delBtn = document.createElement("button");
     delBtn.className = "mini mini--danger";
@@ -929,7 +949,9 @@ function openCategoryModal({ mode, category }) {
 }
 
 function setCatTypeRadio(value) {
-  document.querySelectorAll('input[name="catType"]').forEach((r) => (r.checked = r.value === value));
+  document
+    .querySelectorAll('input[name="catType"]')
+    .forEach((r) => (r.checked = r.value === value));
 }
 
 function getCatTypeRadio() {
@@ -1114,8 +1136,7 @@ async function deleteCategory(catId) {
 }
 
 async function deleteTask(taskId) {
-  const msg =
-    state.settings.lang === "it" ? "Eliminare questa attività?" : "Delete this task?";
+  const msg = state.settings.lang === "it" ? "Eliminare questa attività?" : "Delete this task?";
 
   const ok = await openConfirm({
     title: t("confirmDeleteTaskTitle"),
@@ -1348,7 +1369,8 @@ function normalizeState(s) {
 
   out.settings.lang = out.settings.lang === "en" ? "en" : "it";
   out.settings.theme = out.settings.theme === "dark" ? "dark" : "light";
-  out.settings.font = typeof out.settings.font === "number" ? clamp(out.settings.font, 0.92, 1.25) : 1.02;
+  out.settings.font =
+    typeof out.settings.font === "number" ? clamp(out.settings.font, 0.92, 1.25) : 1.02;
 
   if (typeof out.settings.pinHash !== "string") delete out.settings.pinHash;
 
@@ -1379,4 +1401,93 @@ function uid() {
 }
 
 function clamp(v, a, b) {
-  return Math.max(a, Math.min(b, v
+  return Math.max(a, Math.min(b, v));
+}
+
+function safeLocalStorageGet(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeShowModal(dlg) {
+  if (!dlg) return;
+  // Evita eccezioni se già aperto
+  try {
+    if (typeof dlg.showModal === "function") {
+      if (!dlg.open) dlg.showModal();
+    }
+  } catch {
+    // fallback: se showModal fallisce (es. non permesso), prova open attribute
+    try {
+      dlg.setAttribute("open", "");
+    } catch {}
+  }
+}
+
+function safeClose(dlg) {
+  if (!dlg) return;
+  try {
+    if (dlg.open) dlg.close();
+  } catch {
+    try {
+      dlg.removeAttribute("open");
+    } catch {}
+  }
+}
+
+function addBackdropClose(dlg) {
+  if (!dlg) return;
+  dlg.addEventListener("click", (e) => {
+    // click sul backdrop del dialog: target === dialog
+    if (e.target === dlg) safeClose(dlg);
+  });
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function colorClass(color) {
+  const allowed = new Set(["aqua", "coral", "sand", "mint", "sky", "sunset"]);
+  const c = allowed.has(color) ? color : "aqua";
+  return `card--${c}`;
+}
+
+async function sha256(text) {
+  const enc = new TextEncoder().encode(String(text));
+  const buf = await crypto.subtle.digest("SHA-256", enc);
+  const arr = Array.from(new Uint8Array(buf));
+  return arr.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/* -------------------------------------------------------
+   DEMO (solo se vuoto)
+------------------------------------------------------- */
+function ensureDemoIfEmpty() {
+  if (Array.isArray(state.categories) && state.categories.length > 0) return;
+
+  const c1 = { id: uid(), name: state.settings?.lang === "en" ? "Summer" : "Estate", color: "aqua", isPrivate: false };
+  const c2 = { id: uid(), name: state.settings?.lang === "en" ? "Trips" : "Viaggi", color: "sky", isPrivate: false };
+  const c3 = { id: uid(), name: state.settings?.lang === "en" ? "Private" : "Privato", color: "sunset", isPrivate: false };
+
+  state.categories = [c1, c2, c3];
+
+  state.tasks = [
+    { id: uid(), categoryId: c1.id, text: state.settings?.lang === "en" ? "Go out" : "Uscire", priority: "med", notes: "", done: false, order: 0, createdAt: Date.now() - 500000 },
+    { id: uid(), categoryId: c1.id, text: state.settings?.lang === "en" ? "Beach day" : "Mare", priority: "high", notes: "", done: false, order: 1, createdAt: Date.now() - 400000 },
+    { id: uid(), categoryId: c2.id, text: state.settings?.lang === "en" ? "Plan weekend" : "Organizzare weekend", priority: "med", notes: "", done: true, order: 0, createdAt: Date.now() - 300000 },
+    { id: uid(), categoryId: c3.id, text: state.settings?.lang === "en" ? "Secret note" : "Nota segreta", priority: "low", notes: "—", done: false, order: 0, createdAt: Date.now() - 200000 },
+  ];
+
+  state.ui = state.ui || {};
+  state.ui.activeCategoryId = c1.id;
+  activeCategoryId = c1.id;
+}

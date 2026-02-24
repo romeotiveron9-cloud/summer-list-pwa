@@ -12,6 +12,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
+  <!-- iOS icons -->
   <link rel="apple-touch-icon" href="/summer-list-pwa/icons/icon-192.png" />
 
   <!-- Font -->
@@ -26,11 +27,13 @@
 <body>
   <!-- TOP BAR -->
   <header class="topbar">
-    <button class="iconbtn" id="btnBack" type="button" aria-label="Indietro" hidden>←</button>
+    <div class="topbar__left">
+      <button class="iconbtn" id="btnBack" type="button" aria-label="Indietro" hidden>←</button>
 
-    <div class="topbar__title">
-      <div class="topbar__small" id="topSmall">Home</div>
-      <div class="topbar__big" id="topBig">Categorie</div>
+      <div class="topbar__title">
+        <div class="topbar__small" id="topSmall">Home</div>
+        <div class="topbar__big" id="topBig">Categorie</div>
+      </div>
     </div>
 
     <div class="topbar__actions">
@@ -45,15 +48,15 @@
     <!-- HOME -->
     <section class="screen" id="screenHome">
       <div class="dash">
-        <div class="dash__card dash__card--a" role="button" tabindex="0" aria-label="Totale">
+        <div class="dash__card dash__card--a">
           <div class="dash__num" id="dashTotal">0</div>
           <div class="dash__lbl" id="lblTotal">Tot</div>
         </div>
-        <div class="dash__card dash__card--b" role="button" tabindex="0" aria-label="Fatte">
+        <div class="dash__card dash__card--b">
           <div class="dash__num" id="dashDone">0</div>
           <div class="dash__lbl" id="lblDone">Fatte</div>
         </div>
-        <div class="dash__card dash__card--c" role="button" tabindex="0" aria-label="In sospeso">
+        <div class="dash__card dash__card--c">
           <div class="dash__num" id="dashOpen">0</div>
           <div class="dash__lbl" id="lblOpen">In sospeso</div>
         </div>

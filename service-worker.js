@@ -1,14 +1,15 @@
-/* Summer List — service-worker.js (FULL) */
+/* Summer List — service-worker.js (FULL v8) */
 
-const CACHE_NAME = "summer-list-cache-v7";
+const CACHE_NAME = "summer-list-cache-v8";
+
 const CORE_ASSETS = [
   "/summer-list-pwa/",
   "/summer-list-pwa/index.html",
-  "/summer-list-pwa/styles.css?v=7",
-  "/summer-list-pwa/app.js?v=7",
+  "/summer-list-pwa/styles.css?v=8",
+  "/summer-list-pwa/app.js?v=8",
   "/summer-list-pwa/manifest.webmanifest",
   "/summer-list-pwa/icons/icon-192.png",
-  "/summer-list-pwa/icons/icon-512.png"
+  "/summer-list-pwa/icons/icon-512.png",
 ].filter(Boolean);
 
 self.addEventListener("install", (event) => {
@@ -39,15 +40,15 @@ self.addEventListener("fetch", (event) => {
 
       try {
         const fresh = await fetch(req);
-        // cache solo roba “safe”
         const url = new URL(req.url);
+
         if (url.origin === self.location.origin) {
           const cache = await caches.open(CACHE_NAME);
           cache.put(req, fresh.clone()).catch(() => {});
         }
+
         return fresh;
       } catch {
-        // fallback minimo: se offline e non in cache
         return cached || Response.error();
       }
     })()

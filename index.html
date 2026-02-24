@@ -11,7 +11,6 @@
   <link rel="manifest" href="/summer-list-pwa/manifest.webmanifest" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
   <link rel="apple-touch-icon" href="/summer-list-pwa/icons/icon-192.png" />
 
   <!-- Font -->
@@ -20,7 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <!-- ✅ CACHE-BUST -->
-  <link rel="stylesheet" href="/summer-list-pwa/styles.css?v=8" />
+  <link rel="stylesheet" href="/summer-list-pwa/styles.css?v=9" />
 </head>
 
 <body>
@@ -65,7 +64,11 @@
         <h2 class="sectionTitle" id="homeSectionTitle">Categorie</h2>
       </div>
 
+      <!-- ✅ Vista categorie (normale) -->
       <ul class="list" id="categoryList"></ul>
+
+      <!-- ✅ Vista attività (Fatte / In sospeso) -->
+      <ul class="list" id="homeTaskList" hidden></ul>
 
       <div class="tip" id="homeTip">
         Tocca una categoria per aprirla. Le categorie private richiedono PIN.
@@ -187,7 +190,7 @@
     </div>
   </dialog>
 
-  <!-- ✅ MODAL: CONFERMA (NO confirm() del browser) -->
+  <!-- ✅ MODAL: CONFERMA -->
   <dialog class="modal" id="confirmModal">
     <div class="modal__panel">
       <div class="modal__head">
@@ -263,13 +266,13 @@
   </dialog>
 
   <!-- ✅ App JS (CACHE-BUST) -->
-  <script src="/summer-list-pwa/app.js?v=8"></script>
+  <script src="/summer-list-pwa/app.js?v=9"></script>
 
-  <!-- ✅ Service Worker (solo qui) -->
+  <!-- ✅ Service Worker -->
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/summer-list-pwa/service-worker.js?v=8").catch(() => {});
+        navigator.serviceWorker.register("/summer-list-pwa/service-worker.js?v=9").catch(() => {});
       });
     }
   </script>

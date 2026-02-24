@@ -12,7 +12,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <!-- iOS icons -->
   <link rel="apple-touch-icon" href="/summer-list-pwa/icons/icon-192.png" />
 
   <!-- Font -->
@@ -20,8 +19,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="/summer-list-pwa/styles.css" />
+  <!-- ✅ CSS (CACHE-BUST) -->
+  <link rel="stylesheet" href="/summer-list-pwa/styles.css?v=7" />
 </head>
 
 <body>
@@ -244,14 +243,14 @@
     </div>
   </dialog>
 
-  <!-- App JS -->
-  <script src="/summer-list-pwa/app.js"></script>
+  <!-- ✅ App JS (CACHE-BUST) -->
+  <script src="/summer-list-pwa/app.js?v=7"></script>
 
-  <!-- Service Worker (GitHub Pages / repo summer-list-pwa) -->
+  <!-- ✅ Service Worker: SOLO UNA REGISTRAZIONE (NO DOPPIA) -->
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/summer-list-pwa/service-worker.js").catch(() => {});
+        navigator.serviceWorker.register("/summer-list-pwa/service-worker.js?v=7").catch(() => {});
       });
     }
   </script>

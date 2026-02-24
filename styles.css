@@ -1,8 +1,6 @@
-/* Summer List — styles.css (FULL)
-   - Pop background
-   - Cards + tasks
-   - Dialogs + sheets
-   - ✅ TOPBAR: back+title a sinistra, 3 bottoni SEMPRE a destra (mai overlap)
+/* Summer List — styles.css (FULL v8)
+   - Topbar: azioni sempre a destra
+   - Modal confirm interno (niente confirm() browser)
 */
 
 :root{
@@ -12,25 +10,17 @@
   --radius-md: 16px;
   --shadow: 0 18px 52px rgba(0,0,0,.18);
 
-  /* Background */
   --bg1: #050A1A;
   --bg2: #061B2E;
 
-  /* Surfaces */
   --card: rgba(255,255,255,.92);
   --text: #081126;
   --muted: rgba(8,17,38,.62);
   --line: rgba(8,17,38,.12);
 
-  /* Brand */
   --brand: #00F5D4;
-
-  --btn: rgba(8,17,38,.08);
-  --btn2: rgba(8,17,38,.10);
-
   --danger: #ff2e63;
 
-  /* Gradient super pop */
   --aqua1:#B7FFF7;  --aqua2:#00F5D4;
   --coral1:#FFD0C7; --coral2:#FF4D6D;
   --sand1:#FFF0B3;  --sand2:#FFB703;
@@ -65,9 +55,7 @@ body{
 button, input, select, textarea{ font: inherit; color: inherit; }
 textarea{ resize: none; }
 
-/* ---------------------------------------
-   TOPBAR (FIX)
----------------------------------------- */
+/* TOPBAR */
 .topbar{
   position: sticky;
   top: 0;
@@ -87,7 +75,6 @@ textarea{ resize: none; }
   border-bottom: 1px solid rgba(255,255,255,.12);
 }
 
-/* sinistra = back + titolo (può restringersi) */
 .topbar__left{
   display:flex;
   align-items:center;
@@ -97,10 +84,8 @@ textarea{ resize: none; }
   min-width: 0;
 }
 
-/* back non si restringe */
 #btnBack{ flex: 0 0 auto; }
 
-/* titolo prende spazio ma taglia con ellissi */
 .topbar__title{
   flex: 1 1 auto;
   min-width: 0;
@@ -121,20 +106,18 @@ textarea{ resize: none; }
   font-size: 1.25rem;
   font-weight: 900;
   letter-spacing: .2px;
-
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* destra = 3 bottoni: sempre a destra */
 .topbar__actions{
   flex: 0 0 auto;
   display:flex;
   gap: 8px;
   align-items:center;
 
-  margin-left: auto;     /* ✅ LA CHIAVE */
+  margin-left: auto; /* ✅ spinge a destra */
   white-space: nowrap;
 }
 
@@ -165,9 +148,7 @@ textarea{ resize: none; }
   background: rgba(58,134,255,.18);
 }
 
-/* ---------------------------------------
-   MAIN
----------------------------------------- */
+/* MAIN */
 .main{
   max-width: 620px;
   margin: 0 auto;
@@ -184,22 +165,15 @@ textarea{ resize: none; }
   backdrop-filter: blur(10px);
 }
 
+/* Headings */
 .sectionHead{
   display:flex;
   justify-content: space-between;
   align-items:center;
   margin: 14px 2px 10px;
 }
-.sectionTitle{
-  margin: 0;
-  font-size: 1.2rem;
-  font-weight: 900;
-}
-.subTitle{
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: .95rem;
-}
+.sectionTitle{ margin: 0; font-size: 1.2rem; font-weight: 900; }
+.subTitle{ margin-top: 4px; color: var(--muted); font-size: .95rem; }
 
 /* Dashboard */
 .dash{
@@ -215,6 +189,17 @@ textarea{ resize: none; }
   padding: 14px 12px;
   box-shadow: 0 18px 48px rgba(0,0,0,.12);
   border: 1px solid rgba(0,0,0,.06);
+
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .12s ease, box-shadow .12s ease, outline-color .12s ease;
+}
+.dash__card:active{ transform: scale(.995); }
+
+.dash__card.is-active{
+  outline: 3px solid rgba(0,245,212,.55);
+  box-shadow: 0 18px 52px rgba(0,0,0,.16);
 }
 
 .dash__num{ font-size: 1.55rem; font-weight: 900; }
@@ -276,6 +261,8 @@ textarea{ resize: none; }
   background: rgba(8,17,38,.06);
   cursor:pointer;
 }
+.mini:active{ transform: scale(.98); }
+
 .mini--danger{
   border-color: rgba(255,46,99,.35);
   background: rgba(255,46,99,.10);
@@ -310,6 +297,7 @@ textarea{ resize: none; }
   gap: 8px;
   align-items:center;
 }
+.pillbtn:active{ transform: scale(.99); }
 
 /* Tasks */
 .task{
@@ -368,11 +356,20 @@ textarea{ resize: none; }
   font-weight: 900;
   cursor: pointer;
 }
+.btn:active{ transform: scale(.99); }
+
 .btn--primary{
   background: rgba(0,245,212,.20);
   border-color: rgba(0,245,212,.35);
 }
+
 .btn--ghost{ background: rgba(8,17,38,.06); }
+
+.btn--danger{
+  background: rgba(255,46,99,.14);
+  border-color: rgba(255,46,99,.30);
+  color: #2a0610;
+}
 
 /* Segmented */
 .seg{ display:flex; gap: 10px; }
@@ -393,9 +390,11 @@ textarea{ resize: none; }
 /* Dialogs */
 .modal::backdrop,
 .sheet::backdrop{ background: rgba(0,0,0,.45); }
+
 .modal, .sheet{ border:none; padding:0; background: transparent; }
 
 .modal{ width: min(560px, calc(100% - 24px)); }
+
 .modal__panel{
   margin: 10vh auto;
   background: rgba(255,255,255,.96);
@@ -404,14 +403,24 @@ textarea{ resize: none; }
   box-shadow: var(--shadow);
   overflow: hidden;
 }
+
 .modal__head{
   display:flex; justify-content: space-between; align-items:center;
   gap: 10px;
   padding: 14px 14px 10px;
   border-bottom: 1px solid rgba(0,0,0,.10);
 }
+
 .modal__title{ font-weight: 900; font-size: 1.05rem; }
 .modal__body{ padding: 12px 14px 8px; }
+
+.confirmText{
+  font-weight: 700;
+  color: rgba(8,17,38,.86);
+  line-height: 1.35;
+  font-size: 1rem;
+}
+
 .modal__foot{
   display:flex; gap: 10px;
   padding: 12px 14px 14px;
@@ -455,6 +464,8 @@ textarea{ resize: none; }
   font-weight: 900;
   cursor: pointer;
 }
+.sheet__item:active{ transform: scale(.99); }
+
 .sheet__item.danger{
   border-color: rgba(255,46,99,.35);
   background: rgba(255,46,99,.10);
@@ -478,6 +489,7 @@ textarea{ resize: none; }
   font-weight: 900;
   cursor:pointer;
 }
+.sheet__close:active{ transform: scale(.99); }
 
 .row{ display:flex; gap: 10px; }
 .chip{
@@ -489,6 +501,8 @@ textarea{ resize: none; }
   font-weight: 900;
   cursor:pointer;
 }
+.chip:active{ transform: scale(.99); }
+
 .rangeRow{ display:flex; gap: 10px; align-items:center; }
 .rangeIcon{ width: 36px; text-align:center; color: var(--muted); font-weight: 900; }
 input[type="range"]{ width: 100%; accent-color: var(--brand); }

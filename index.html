@@ -12,7 +12,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-  <!-- iOS icons (opzionale, ma aiuta) -->
   <link rel="apple-touch-icon" href="/summer-list-pwa/icons/icon-192.png" />
 
   <!-- Font -->
@@ -46,15 +45,15 @@
     <!-- HOME -->
     <section class="screen" id="screenHome">
       <div class="dash">
-        <div class="dash__card dash__card--a">
+        <div class="dash__card dash__card--a" role="button" tabindex="0" aria-label="Totale">
           <div class="dash__num" id="dashTotal">0</div>
           <div class="dash__lbl" id="lblTotal">Tot</div>
         </div>
-        <div class="dash__card dash__card--b">
+        <div class="dash__card dash__card--b" role="button" tabindex="0" aria-label="Fatte">
           <div class="dash__num" id="dashDone">0</div>
           <div class="dash__lbl" id="lblDone">Fatte</div>
         </div>
-        <div class="dash__card dash__card--c">
+        <div class="dash__card dash__card--c" role="button" tabindex="0" aria-label="In sospeso">
           <div class="dash__num" id="dashOpen">0</div>
           <div class="dash__lbl" id="lblOpen">In sospeso</div>
         </div>

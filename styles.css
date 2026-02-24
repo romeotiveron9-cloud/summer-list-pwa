@@ -1,4 +1,4 @@
-/* Summer List — styles.css (acceso + sfondo + fix hidden) */
+/* Summer List — styles.css (acceso + sfondo + fix hidden + topbar fix + dash filter) */
 
 :root{
   --fs: 1.02;
@@ -17,7 +17,7 @@
   --muted: rgba(8,17,38,.62);
   --line: rgba(8,17,38,.12);
 
-  /* Brand super acceso */
+  /* Brand */
   --brand: #00F5D4;
 
   --btn: rgba(8,17,38,.08);
@@ -51,7 +51,6 @@ body{
   color: var(--text);
   min-height: 100vh;
 
-  /* Sfondo colorato */
   background:
     radial-gradient(1200px 700px at 15% 10%, rgba(0,245,212,.38), transparent 60%),
     radial-gradient(900px 600px at 90% 15%, rgba(58,134,255,.32), transparent 55%),
@@ -67,9 +66,14 @@ textarea{ resize: none; }
   position: sticky;
   top: 0;
   z-index: 10;
-  padding: max(14px, env(safe-area-inset-top)) 14px 12px 14px;
+
+  padding-top: max(14px, env(safe-area-inset-top));
+  padding-right: max(14px, env(safe-area-inset-right));
+  padding-bottom: 12px;
+  padding-left: max(14px, env(safe-area-inset-left));
+
   display: grid;
-  grid-template-columns: 44px 1fr auto;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
 
@@ -78,11 +82,31 @@ textarea{ resize: none; }
   border-bottom: 1px solid rgba(255,255,255,.12);
 }
 
-.topbar__title{ line-height: 1.05; color: #fff; }
-.topbar__small{ font-size: .92rem; opacity: .8; font-weight: 600; }
-.topbar__big{ font-size: 1.25rem; font-weight: 900; letter-spacing: .2px; }
+.topbar__title{
+  line-height: 1.05;
+  color: #fff;
+  min-width: 0;
+}
 
-.topbar__actions{ display:flex; gap: 8px; align-items:center; }
+.topbar__small{ font-size: .92rem; opacity: .8; font-weight: 600; }
+
+.topbar__big{
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: .2px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar__actions{
+  display:flex;
+  gap: 8px;
+  align-items:center;
+  justify-self: end;
+  flex-wrap: nowrap;
+}
 
 /* Icon buttons */
 .iconbtn{
@@ -99,10 +123,16 @@ textarea{ resize: none; }
   font-weight: 900;
 }
 .iconbtn:active{ transform: scale(.98); }
+
 .iconbtn--add{
   background: var(--brand);
   border-color: rgba(0,245,212,.55);
   color: #051018;
+}
+
+.iconbtn--data{
+  border-color: rgba(58,134,255,.30);
+  background: rgba(58,134,255,.18);
 }
 
 /* Main container */
@@ -142,9 +172,20 @@ textarea{ resize: none; }
   padding: 14px 12px;
   box-shadow: 0 18px 48px rgba(0,0,0,.12);
   border: 1px solid rgba(0,0,0,.06);
+
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .12s ease, box-shadow .12s ease, outline-color .12s ease;
+}
+.dash__card:active{ transform: scale(.995); }
+
+.dash__card.is-active{
+  outline: 3px solid rgba(0,245,212,.55);
+  box-shadow: 0 18px 52px rgba(0,0,0,.16);
 }
 
-.dash__num{ font-size: 1.55rem; font-weight: 900; }
+.dash__num{ font-size: 1.55rem; font-weight: 900; letter-spacing: .2px; }
 .dash__lbl{ margin-top: 2px; font-size: .95rem; font-weight: 800; opacity: .85; }
 
 .dash__card--a{ background: linear-gradient(135deg, var(--aqua1), var(--aqua2)); color:#062826; }
@@ -176,6 +217,9 @@ textarea{ resize: none; }
   gap: 8px;
   align-items:center;
 }
+
+.lock{ filter: saturate(1.1); }
+
 .left .meta{
   margin-top: 6px;
   color: var(--muted);
@@ -203,6 +247,8 @@ textarea{ resize: none; }
   background: rgba(8,17,38,.06);
   cursor:pointer;
 }
+.mini:active{ transform: scale(.98); }
+
 .mini--danger{
   border-color: rgba(255,46,99,.35);
   background: rgba(255,46,99,.10);
@@ -237,6 +283,7 @@ textarea{ resize: none; }
   gap: 8px;
   align-items:center;
 }
+.pillbtn:active{ transform: scale(.99); }
 
 /* Tasks list items created by JS: .task ... */
 .task{
@@ -257,7 +304,13 @@ textarea{ resize: none; }
 .task__text{ font-weight: 900; line-height: 1.1; font-size: 1.02rem; }
 .task__text.done{ color: var(--muted); text-decoration: line-through; text-decoration-thickness: 2px; }
 
-.task__notes{ margin-top: 6px; color: var(--muted); font-size: .95rem; font-weight: 650; overflow-wrap:anywhere; }
+.task__notes{
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: .95rem;
+  font-weight: 650;
+  overflow-wrap:anywhere;
+}
 
 .badge{
   padding: 6px 10px;
@@ -295,6 +348,8 @@ textarea{ resize: none; }
   font-weight: 900;
   cursor: pointer;
 }
+.btn:active{ transform: scale(.99); }
+
 .btn--primary{
   background: rgba(0,245,212,.20);
   border-color: rgba(0,245,212,.35);
@@ -383,6 +438,8 @@ textarea{ resize: none; }
   font-weight: 900;
   cursor: pointer;
 }
+.sheet__item:active{ transform: scale(.99); }
+
 .sheet__item.danger{
   border-color: rgba(255,46,99,.35);
   background: rgba(255,46,99,.10);
@@ -406,6 +463,7 @@ textarea{ resize: none; }
   font-weight: 900;
   cursor:pointer;
 }
+.sheet__close:active{ transform: scale(.99); }
 
 .row{ display:flex; gap: 10px; }
 .chip{
@@ -417,6 +475,8 @@ textarea{ resize: none; }
   font-weight: 900;
   cursor:pointer;
 }
+.chip:active{ transform: scale(.99); }
+
 .rangeRow{ display:flex; gap: 10px; align-items:center; }
 .rangeIcon{ width: 36px; text-align:center; color: var(--muted); font-weight: 900; }
 input[type="range"]{ width: 100%; accent-color: var(--brand); }

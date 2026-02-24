@@ -1,26 +1,14 @@
 "use strict";
 
 /* -------------------------------------------------------
-  Summer List — app.js
-  - Offline/PWA: registra service-worker.js
+  Summer List — app.js (v8)
   - Storage: IndexedDB con fallback localStorage
   - i18n, tema, font size, PIN hash, categorie private
   - Export/Import JSON, Reset demo
-  - Home filter: Tot / Fatte / In sospeso filtra categorie
+  - ✅ Dashboard filter: Tot / Fatte / In sospeso
+  - ✅ Confirm interno (NO confirm() del browser)
 ------------------------------------------------------- */
 
-/* -------------------------------------------------------
-   PWA: Service Worker (offline)
-------------------------------------------------------- */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
-  });
-}
-
-/* -------------------------------------------------------
-   CONST
-------------------------------------------------------- */
 const STORAGE_KEY = "summer_list_topplus_v2"; // bump versione
 
 const PRIORITY_LABEL = {
@@ -40,10 +28,8 @@ const I18N = {
     total: "Tot",
     done: "Fatte",
     open: "In sospeso",
-    tipHome:
-      "Tocca una categoria per aprirla. Le categorie private richiedono PIN.",
-    tipCat:
-      "Spunta le attività completate. Puoi modificare con ✎ o eliminare con 🗑.",
+    tipHome: "Tocca una categoria per aprirla. Le categorie private richiedono PIN.",
+    tipCat: "Spunta le attività completate. Puoi modificare con ✎ o eliminare con 🗑.",
     newCategory: "Nuova categoria",
     renameCategory: "Modifica categoria",
     catName: "Nome categoria",
@@ -78,12 +64,8 @@ const I18N = {
     light: "Chiaro",
     dark: "Scuro",
     fontSize: "Dimensione font",
-    setPinFirst:
-      "Prima imposta un PIN nelle Impostazioni per creare categorie private.",
+    setPinFirst: "Prima imposta un PIN nelle Impostazioni per creare categorie private.",
     wrongPin: "PIN errato.",
-    deleteCategoryConfirm: (name, count) =>
-      `Eliminare "${name}"?\nVerranno eliminate anche ${count} attività.`,
-    deleteTaskConfirm: "Eliminare questa attività?",
     importConfirm: "Importare questi dati? Sovrascriverà quelli attuali.",
     resetConfirm: "Reset demo? Cancella tutto e rimette i dati di esempio.",
     pinSaved: "PIN salvato.",
@@ -91,6 +73,13 @@ const I18N = {
     selectedNowCopy: "Selezionato: ora fai Copia.",
     invalidJson: "JSON non valido.",
     dupCategory: "Esiste già una categoria con questo nome.",
+
+    confirmDeleteCategoryTitle: "Elimina categoria",
+    confirmDeleteTaskTitle: "Elimina attività",
+    confirmImportTitle: "Importa dati",
+    confirmResetTitle: "Reset demo",
+    ok: "Ok",
+    delete: "Elimina",
   },
   en: {
     home: "Home",
@@ -140,9 +129,6 @@ const I18N = {
     fontSize: "Font size",
     setPinFirst: "Set an app PIN in Settings before creating private categories.",
     wrongPin: "Wrong PIN.",
-    deleteCategoryConfirm: (name, count) =>
-      `Delete "${name}"?\nThis will also delete ${count} tasks.`,
-    deleteTaskConfirm: "Delete this task?",
     importConfirm: "Import these data? This will overwrite current data.",
     resetConfirm: "Reset demo? This will delete everything and restore sample data.",
     pinSaved: "PIN saved.",
@@ -150,6 +136,13 @@ const I18N = {
     selectedNowCopy: "Selected: now copy.",
     invalidJson: "Invalid JSON.",
     dupCategory: "A category with this name already exists.",
+
+    confirmDeleteCategoryTitle: "Delete category",
+    confirmDeleteTaskTitle: "Delete task",
+    confirmImportTitle: "Import data",
+    confirmResetTitle: "Reset demo",
+    ok: "Ok",
+    delete: "Delete",
   },
 };
 
@@ -223,21 +216,15 @@ const Storage = (() => {
 
   return {
     async getString(key) {
-      if (hasIDB()) {
-        try { return await idbGet(key); } catch {}
-      }
+      if (hasIDB()) { try { return await idbGet(key); } catch {} }
       return lsGet(key);
     },
     async setString(key, value) {
-      if (hasIDB()) {
-        try { await idbSet(key, value); return true; } catch {}
-      }
+      if (hasIDB()) { try { await idbSet(key, value); return true; } catch {} }
       return lsSet(key, value);
     },
     async del(key) {
-      if (hasIDB()) {
-        try { await idbDel(key); return true; } catch {}
-      }
+      if (hasIDB()) { try { await idbDel(key); return true; } catch {} }
       return lsDel(key);
     },
   };
@@ -254,6 +241,7 @@ let editingCategoryId = null;
 let editingTaskId = null;
 let pendingOpenCategoryId = null;
 
+// ✅ filtro dashboard home
 let homeFilter = "all"; // "all" | "done" | "open"
 
 /* -------------------------------------------------------
@@ -276,6 +264,10 @@ const el = {
   lblTotal: document.getElementById("lblTotal"),
   lblDone: document.getElementById("lblDone"),
   lblOpen: document.getElementById("lblOpen"),
+
+  dashCardTotal: document.getElementById("dashCardTotal"),
+  dashCardDone: document.getElementById("dashCardDone"),
+  dashCardOpen: document.getElementById("dashCardOpen"),
 
   homeSectionTitle: document.getElementById("homeSectionTitle"),
   homeTip: document.getElementById("homeTip"),
@@ -359,6 +351,14 @@ const el = {
   priHigh: document.getElementById("priHigh"),
   priMed: document.getElementById("priMed"),
   priLow: document.getElementById("priLow"),
+
+  // ✅ confirm modal
+  confirmModal: document.getElementById("confirmModal"),
+  confirmTitle: document.getElementById("confirmTitle"),
+  confirmText: document.getElementById("confirmText"),
+  closeConfirmModal: document.getElementById("closeConfirmModal"),
+  confirmCancel: document.getElementById("confirmCancel"),
+  confirmOk: document.getElementById("confirmOk"),
 };
 
 /* -------------------------------------------------------
@@ -417,26 +417,10 @@ function wireEvents() {
     openCategoryModal({ mode: "edit", category: cat });
   });
 
-  // Dashboard filter (Tot / Fatte / In sospeso)
-  const cardTot = document.querySelector(".dash__card--a");
-  const cardDone = document.querySelector(".dash__card--b");
-  const cardOpen = document.querySelector(".dash__card--c");
-
-  cardTot?.addEventListener("click", () => {
-    homeFilter = "all";
-    renderDashboard();
-    renderCategories();
-  });
-  cardDone?.addEventListener("click", () => {
-    homeFilter = "done";
-    renderDashboard();
-    renderCategories();
-  });
-  cardOpen?.addEventListener("click", () => {
-    homeFilter = "open";
-    renderDashboard();
-    renderCategories();
-  });
+  // Dashboard filter
+  el.dashCardTotal?.addEventListener("click", () => setHomeFilter("all"));
+  el.dashCardDone?.addEventListener("click", () => setHomeFilter("done"));
+  el.dashCardOpen?.addEventListener("click", () => setHomeFilter("open"));
 
   // Category modal
   el.closeCategoryModal.addEventListener("click", () => safeClose(el.categoryModal));
@@ -470,6 +454,11 @@ function wireEvents() {
       confirmUnlock();
     }
   });
+
+  // ✅ Confirm modal (internal)
+  el.closeConfirmModal.addEventListener("click", () => resolveConfirm(false));
+  el.confirmCancel.addEventListener("click", () => resolveConfirm(false));
+  el.confirmOk.addEventListener("click", () => resolveConfirm(true));
 
   // Data
   el.btnGenerateExport.addEventListener("click", generateExport);
@@ -514,6 +503,13 @@ function wireEvents() {
   addBackdropClose(el.categoryModal);
   addBackdropClose(el.taskModal);
   addBackdropClose(el.unlockModal);
+  addBackdropClose(el.confirmModal);
+}
+
+function setHomeFilter(next) {
+  homeFilter = next;
+  renderDashboard();
+  renderCategories();
 }
 
 /* -------------------------------------------------------
@@ -612,13 +608,9 @@ function renderDashboard() {
   el.lblDone.textContent = t("done");
   el.lblOpen.textContent = t("open");
 
-  const cardTot = document.querySelector(".dash__card--a");
-  const cardDone = document.querySelector(".dash__card--b");
-  const cardOpen = document.querySelector(".dash__card--c");
-
-  cardTot?.classList.toggle("is-active", homeFilter === "all");
-  cardDone?.classList.toggle("is-active", homeFilter === "done");
-  cardOpen?.classList.toggle("is-active", homeFilter === "open");
+  el.dashCardTotal?.classList.toggle("is-active", homeFilter === "all");
+  el.dashCardDone?.classList.toggle("is-active", homeFilter === "done");
+  el.dashCardOpen?.classList.toggle("is-active", homeFilter === "open");
 }
 
 function renderCategories() {
@@ -634,7 +626,7 @@ function renderCategories() {
     // done = categoria completa (almeno 1 task e tutte done)
     if (homeFilter === "done") return stats.total > 0 && stats.done === stats.total;
 
-    // open = non completa (incluse vuote)
+    // open = categoria non completa (incluse 0 task)
     if (homeFilter === "open") return stats.total === 0 || stats.done < stats.total;
 
     return true;
@@ -680,9 +672,9 @@ function renderCategories() {
     delBtn.type = "button";
     delBtn.title = "Delete";
     delBtn.textContent = "🗑";
-    delBtn.addEventListener("click", (e) => {
+    delBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
-      deleteCategory(c.id);
+      await deleteCategory(c.id);
     });
 
     actions.appendChild(editBtn);
@@ -724,7 +716,6 @@ function renderTasks() {
       renderDashboard();
       updateCategorySub(cat.id);
       renderTasks();
-      if (!el.screenHome.hidden) renderCategories();
     });
     checkWrap.appendChild(cb);
 
@@ -769,7 +760,9 @@ function renderTasks() {
     delBtn.type = "button";
     delBtn.title = "Delete";
     delBtn.textContent = "🗑";
-    delBtn.addEventListener("click", () => deleteTask(tItem.id));
+    delBtn.addEventListener("click", async () => {
+      await deleteTask(tItem.id);
+    });
 
     actions.appendChild(editBtn);
     actions.appendChild(delBtn);
@@ -813,9 +806,9 @@ function openCategoryModal({ mode, category }) {
 }
 
 function setCatTypeRadio(value) {
-  document.querySelectorAll('input[name="catType"]').forEach((r) => {
-    r.checked = r.value === value;
-  });
+  document
+    .querySelectorAll('input[name="catType"]')
+    .forEach((r) => (r.checked = r.value === value));
 }
 
 function getCatTypeRadio() {
@@ -864,6 +857,7 @@ async function saveCategoryFromModal() {
   safeClose(el.categoryModal);
 
   renderDashboard();
+
   if (!el.screenHome.hidden) renderCategories();
   if (!el.screenCategory.hidden) {
     const cat = getActiveCategory();
@@ -938,18 +932,57 @@ async function saveTaskFromModal() {
   renderDashboard();
   updateCategorySub(cat.id);
   renderTasks();
-  if (!el.screenHome.hidden) renderCategories();
 }
 
 /* -------------------------------------------------------
-   DELETE
+   ✅ CONFIRM INTERNAL (Promise)
+------------------------------------------------------- */
+let _confirmResolver = null;
+
+function openConfirm({ title, text, okText, danger = true }) {
+  return new Promise((resolve) => {
+    _confirmResolver = resolve;
+
+    el.confirmTitle.textContent = title || "Conferma";
+    el.confirmText.textContent = text || "—";
+
+    el.confirmOk.textContent = okText || t("ok");
+    el.confirmOk.classList.toggle("btn--danger", !!danger);
+    el.confirmOk.classList.toggle("btn--primary", !danger);
+
+    safeShowModal(el.confirmModal);
+    setTimeout(() => el.confirmOk.focus?.(), 60);
+  });
+}
+
+function resolveConfirm(value) {
+  safeClose(el.confirmModal);
+  const r = _confirmResolver;
+  _confirmResolver = null;
+  if (typeof r === "function") r(!!value);
+}
+
+/* -------------------------------------------------------
+   DELETE (NO confirm() browser)
 ------------------------------------------------------- */
 async function deleteCategory(catId) {
   const cat = state.categories.find((c) => c.id === catId);
   if (!cat) return;
 
   const count = state.tasks.filter((t) => t.categoryId === catId).length;
-  const ok = confirm(t("deleteCategoryConfirm")(cat.name, count));
+
+  const msg =
+    state.settings.lang === "it"
+      ? `Eliminare "${cat.name}"?\nVerranno eliminate anche ${count} attività.`
+      : `Delete "${cat.name}"?\nThis will also delete ${count} tasks.`;
+
+  const ok = await openConfirm({
+    title: t("confirmDeleteCategoryTitle"),
+    text: msg,
+    okText: t("delete"),
+    danger: true,
+  });
+
   if (!ok) return;
 
   state.categories = state.categories.filter((c) => c.id !== catId);
@@ -964,24 +997,34 @@ async function deleteCategory(catId) {
 }
 
 async function deleteTask(taskId) {
-  const ok = confirm(t("deleteTaskConfirm"));
+  const msg =
+    state.settings.lang === "it"
+      ? "Eliminare questa attività?"
+      : "Delete this task?";
+
+  const ok = await openConfirm({
+    title: t("confirmDeleteTaskTitle"),
+    text: msg,
+    okText: t("delete"),
+    danger: true,
+  });
+
   if (!ok) return;
 
   state.tasks = state.tasks.filter((t) => t.id !== taskId);
   await saveState();
   renderDashboard();
   renderTasks();
-  if (!el.screenHome.hidden) renderCategories();
 }
 
 /* -------------------------------------------------------
-   DATA: Export/Import (copy-paste)
+   DATA: Export/Import
 ------------------------------------------------------- */
 function generateExport() {
   const payload = {
     exportedAt: new Date().toISOString(),
     app: "Summer List",
-    version: 4,
+    version: 8,
     data: state,
   };
   el.exportArea.value = JSON.stringify(payload, null, 2);
@@ -1014,7 +1057,13 @@ async function applyImport() {
   }
 
   const incoming = parsed?.data ?? parsed;
-  const ok = confirm(t("importConfirm"));
+
+  const ok = await openConfirm({
+    title: t("confirmImportTitle"),
+    text: t("importConfirm"),
+    okText: t("ok"),
+    danger: false,
+  });
   if (!ok) return;
 
   state = normalizeState(incoming);
@@ -1037,7 +1086,12 @@ async function applyImport() {
 }
 
 async function resetDemo() {
-  const ok = confirm(t("resetConfirm"));
+  const ok = await openConfirm({
+    title: t("confirmResetTitle"),
+    text: t("resetConfirm"),
+    okText: t("ok"),
+    danger: true,
+  });
   if (!ok) return;
 
   await Storage.del(STORAGE_KEY);
@@ -1114,6 +1168,9 @@ function applyI18n() {
   el.btnSavePin.textContent = t("savePin");
   el.lblLight.textContent = t("light");
   el.lblDark.textContent = t("dark");
+
+  // confirm modal buttons
+  el.confirmCancel.textContent = t("cancel");
 }
 
 /* -------------------------------------------------------
@@ -1267,7 +1324,11 @@ function safeClose(dlg) {
 
 function addBackdropClose(dlg) {
   dlg.addEventListener("click", (e) => {
-    if (e.target === dlg) safeClose(dlg);
+    if (e.target === dlg) {
+      // se è confirm modal e c'è una promise aperta → annulla
+      if (dlg === el.confirmModal && _confirmResolver) resolveConfirm(false);
+      else safeClose(dlg);
+    }
   });
 }
 
@@ -1286,36 +1347,9 @@ function ensureDemoIfEmpty() {
 
   state.categories = [c1, c2];
   state.tasks = [
-    {
-      id: uid(),
-      categoryId: c1.id,
-      text: "Uscire",
-      priority: "med",
-      notes: "",
-      done: false,
-      order: 0,
-      createdAt: Date.now(),
-    },
-    {
-      id: uid(),
-      categoryId: c1.id,
-      text: "Fun",
-      priority: "low",
-      notes: "Idee per serata",
-      done: true,
-      order: 1,
-      createdAt: Date.now(),
-    },
-    {
-      id: uid(),
-      categoryId: c2.id,
-      text: "Limonata",
-      priority: "low",
-      notes: "Menta + ghiaccio",
-      done: false,
-      order: 0,
-      createdAt: Date.now(),
-    },
+    { id: uid(), categoryId: c1.id, text: "Uscire", priority: "med", notes: "", done: false, order: 0, createdAt: Date.now() },
+    { id: uid(), categoryId: c1.id, text: "Fun", priority: "low", notes: "Idee per serata", done: true, order: 1, createdAt: Date.now() },
+    { id: uid(), categoryId: c2.id, text: "Limonata", priority: "low", notes: "Menta + ghiaccio", done: false, order: 0, createdAt: Date.now() },
   ];
 
   state.settings = state.settings || { lang: "it", theme: "light", font: 1.02 };
